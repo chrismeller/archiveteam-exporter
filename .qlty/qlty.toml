@@ -92,6 +92,15 @@ mode = "comment"
 [[plugin]]
 name = "osv-scanner"
 
+[[plugin]]
+name = "dockerfmt"
+
+[[plugin]]
+name = "gitleaks"
+
+[[plugin]]
+name = "radarlint"
+
 [plugins.definitions.semgrep.drivers.lint]
 # required it seems to specify that we want to use the default rules collection and not a custom config file
 script = "semgrep --metrics=off --disable-version-check --config \"p/default\" --config \"p/csharp\" --config \"p/gitlab\" --sarif --output=${tmpfile} ${target}"
