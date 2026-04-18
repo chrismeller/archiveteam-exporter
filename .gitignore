@@ -5,6 +5,7 @@
 
 # dotenv files
 .env
+hk.local.pkl
 
 # User-specific files
 *.rsuser
