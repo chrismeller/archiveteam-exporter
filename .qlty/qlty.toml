@@ -59,3 +59,39 @@ mode = "comment"
 [[source]]
 name = "default"
 default = true
+
+[[plugin]]
+name = "actionlint"
+
+[[plugin]]
+name = "hadolint"
+
+[[plugin]]
+name = "radarlint-iac"
+mode = "monitor"
+
+[[plugin]]
+name = "trufflehog"
+
+[[plugin]]
+name = "zizmor"
+
+[[plugin]]
+name = "checkov"
+
+[[plugin]]
+name = "trivy"
+
+[[plugin]]
+name = "semgrep"
+
+[[plugin]]
+name = "dotenv-linter"
+mode = "comment"
+
+[[plugin]]
+name = "osv-scanner"
+
+[plugins.definitions.semgrep.drivers.lint]
+# required it seems to specify that we want to use the default rules collection and not a custom config file
+script = "semgrep --metrics=off --disable-version-check --config \"p/default\" --config \"p/csharp\" --config \"p/gitlab\" --sarif --output=${tmpfile} ${target}"
