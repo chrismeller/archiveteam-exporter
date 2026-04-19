@@ -9,8 +9,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\ArchiveTeam.Exporter.ApiService\ArchiveTeam.Exporter.ApiService.csproj" />
-    <ProjectReference Include="..\ArchiveTeam.Exporter.Web\ArchiveTeam.Exporter.Web.csproj" />
+    <ProjectReference
+      Include="..\ArchiveTeam.Exporter.ApiService\ArchiveTeam.Exporter.ApiService.csproj" />
   </ItemGroup>
 
 </Project>

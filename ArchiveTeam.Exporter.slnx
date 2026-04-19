@@ -1,2 +1,8 @@
 <Solution>
+  <Folder Name="/src/">
+    <Project Path="src/ArchiveTeam.Exporter.ApiService/ArchiveTeam.Exporter.ApiService.csproj" />
+    <Project Path="src/ArchiveTeam.Exporter.AppHost/ArchiveTeam.Exporter.AppHost.csproj" />
+    <Project Path="src/ArchiveTeam.Exporter.ServiceDefaults/ArchiveTeam.Exporter.ServiceDefaults.csproj" />
+    <Project Path="src/ArchiveTeam.Exporter.Tests/ArchiveTeam.Exporter.Tests.csproj" />
+  </Folder>
 </Solution>
