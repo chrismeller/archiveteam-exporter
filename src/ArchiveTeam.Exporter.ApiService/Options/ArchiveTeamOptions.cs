@@ -11,6 +11,10 @@ public class ArchiveTeamOptions
 
     [ValidCommaSeparatedList]
     public string ProjectsWhitelist { get; set; } = string.Empty;
+
+    public int CacheDurationMinutes { get; set; } = 5;
+
+    public TimeSpan CacheDuration => TimeSpan.FromMinutes(CacheDurationMinutes);
 }
 
 public class ValidCommaSeparatedListAttribute : ValidationAttribute

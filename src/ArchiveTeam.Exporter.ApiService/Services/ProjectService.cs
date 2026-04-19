@@ -2,6 +2,7 @@ using System.Diagnostics.Metrics;
 using System.Text.Json;
 using ArchiveTeam.Exporter.ApiService.Models;
 using ArchiveTeam.Exporter.ApiService.Options;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Prometheus;
@@ -14,15 +15,20 @@ public class ProjectService : IProjectService
     private readonly ArchiveTeamOptions _options;
     private readonly ILogger<ProjectService> _logger;
     private readonly Gauge _projectInfoGauge;
+    private readonly IMemoryCache _memoryCache;
+    private readonly SemaphoreSlim _cacheLock = new(1, 1);
+    private const string CacheKey = "whitelisted_projects";
 
     public ProjectService(
         HttpClient httpClient,
         IOptions<ArchiveTeamOptions> options,
-        ILogger<ProjectService> logger)
+        ILogger<ProjectService> logger,
+        IMemoryCache memoryCache)
     {
         _httpClient = httpClient;
         _options = options.Value;
         _logger = logger;
+        _memoryCache = memoryCache;
 
         _projectInfoGauge = Metrics
             .CreateGauge(
@@ -36,27 +42,54 @@ public class ProjectService : IProjectService
 
     public async Task<ArchiveTeamProject[]> FetchProjectsAsync(CancellationToken cancellationToken)
     {
-        const string projectsUrl = "https://warriorhq.archiveteam.org/projects.json";
-
-        _logger.LogInformation("Fetching projects from {ProjectsUrl}", projectsUrl);
-
-        var response = await _httpClient.GetAsync(projectsUrl, cancellationToken);
-        response.EnsureSuccessStatusCode();
-
-        var projectsResponse = await response.Content.ReadFromJsonAsync<ArchiveTeamProjectsResponse>(cancellationToken);
-
-        var projects = projectsResponse?.Projects ?? [];
-
-        _logger.LogInformation("Successfully loaded {Count} projects", projects.Length);
-
-        var whitelistedProjects = FilterByWhitelist(projects);
-
-        if (whitelistedProjects.Length < projects.Length)
+        if (_memoryCache.TryGetValue(CacheKey, out ArchiveTeamProject[]? cachedProjects))
         {
-            _logger.LogInformation("Filtered to {WhitelistCount} projects based on whitelist", whitelistedProjects.Length);
+            _logger.LogInformation("Cache hit: returning {Count} cached projects", cachedProjects?.Length ?? 0);
+            return cachedProjects ?? [];
         }
 
-        return whitelistedProjects;
+        await _cacheLock.WaitAsync(cancellationToken);
+        try
+        {
+            if (_memoryCache.TryGetValue(CacheKey, out cachedProjects))
+            {
+                _logger.LogInformation("Cache hit after lock: returning {Count} cached projects", cachedProjects?.Length ?? 0);
+                return cachedProjects ?? [];
+            }
+
+            _logger.LogInformation("Cache miss: fetching projects from API");
+
+            const string projectsUrl = "https://warriorhq.archiveteam.org/projects.json";
+
+            var response = await _httpClient.GetAsync(projectsUrl, cancellationToken);
+            response.EnsureSuccessStatusCode();
+
+            var projectsResponse = await response.Content.ReadFromJsonAsync<ArchiveTeamProjectsResponse>(cancellationToken);
+
+            var projects = projectsResponse?.Projects ?? [];
+
+            _logger.LogInformation("Successfully loaded {Count} projects", projects.Length);
+
+            var whitelistedProjects = FilterByWhitelist(projects);
+
+            if (whitelistedProjects.Length < projects.Length)
+            {
+                _logger.LogInformation("Filtered to {WhitelistCount} projects based on whitelist", whitelistedProjects.Length);
+            }
+
+            var cacheOptions = new MemoryCacheEntryOptions()
+                .SetAbsoluteExpiration(_options.CacheDuration);
+
+            _memoryCache.Set(CacheKey, whitelistedProjects, cacheOptions);
+
+            _logger.LogInformation("Cached {Count} whitelisted projects for {CacheDuration}", whitelistedProjects.Length, _options.CacheDuration);
+
+            return whitelistedProjects;
+        }
+        finally
+        {
+            _cacheLock.Release();
+        }
     }
 
     private ArchiveTeamProject[] FilterByWhitelist(ArchiveTeamProject[] projects)

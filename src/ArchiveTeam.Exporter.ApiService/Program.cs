@@ -36,6 +36,8 @@ builder.Services.AddOptions<ArchiveTeamOptions>()
     .ValidateDataAnnotations()
     .ValidateOnStart();
 
+builder.Services.AddMemoryCache();
+
 builder.Services.AddHttpClient<ProjectService>(client =>
 {
     client.DefaultRequestHeaders.Add("User-Agent", "ArchiveTeam.Exporter/1.0");
