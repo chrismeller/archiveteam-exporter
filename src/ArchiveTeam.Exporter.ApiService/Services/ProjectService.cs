@@ -21,6 +21,7 @@ public class ProjectService : IProjectService
     private readonly Gauge _projectItemsOutGauge;
     private readonly Gauge _projectUserBytesGauge;
     private readonly Gauge _projectUserItemsGauge;
+    private readonly Gauge _cacheLastRefreshGauge;
     private readonly IMemoryCache _memoryCache;
     private readonly SemaphoreSlim _cacheLock = new(1, 1);
     private const string CacheKey = "whitelisted_projects";
@@ -43,7 +44,7 @@ public class ProjectService : IProjectService
         _projectInfoGauge = Metrics
             .CreateGauge(
                 "archiveteam_projects_info",
-                "Information about ArchiveTeam projects",
+                "Information about ArchiveTeam projects. Data is cached; see archiveteam_cache_last_refresh_timestamp_seconds for cache age.",
                 new GaugeConfiguration
                 {
                     LabelNames = ["name", "title"]
@@ -52,7 +53,7 @@ public class ProjectService : IProjectService
         _projectTotalItemsGauge = Metrics
             .CreateGauge(
                 "archiveteam_project_total_items",
-                "Total items in the project",
+                "Total items in the project. Data is cached; see archiveteam_cache_last_refresh_timestamp_seconds for cache age.",
                 new GaugeConfiguration
                 {
                     LabelNames = ["name"]
@@ -61,7 +62,7 @@ public class ProjectService : IProjectService
         _projectItemsDoneGauge = Metrics
             .CreateGauge(
                 "archiveteam_project_items_done",
-                "Completed items in the project",
+                "Completed items in the project. Data is cached; see archiveteam_cache_last_refresh_timestamp_seconds for cache age.",
                 new GaugeConfiguration
                 {
                     LabelNames = ["name"]
@@ -70,7 +71,7 @@ public class ProjectService : IProjectService
         _projectItemsTodoGauge = Metrics
             .CreateGauge(
                 "archiveteam_project_items_todo",
-                "Remaining items to do in the project",
+                "Remaining items to do in the project. Data is cached; see archiveteam_cache_last_refresh_timestamp_seconds for cache age.",
                 new GaugeConfiguration
                 {
                     LabelNames = ["name"]
@@ -79,7 +80,7 @@ public class ProjectService : IProjectService
         _projectItemsOutGauge = Metrics
             .CreateGauge(
                 "archiveteam_project_items_out",
-                "Items currently being worked on in the project",
+                "Items currently being worked on in the project. Data is cached; see archiveteam_cache_last_refresh_timestamp_seconds for cache age.",
                 new GaugeConfiguration
                 {
                     LabelNames = ["name"]
@@ -88,7 +89,7 @@ public class ProjectService : IProjectService
         _projectUserBytesGauge = Metrics
             .CreateGauge(
                 "archiveteam_project_user_bytes",
-                "Bytes downloaded by user for project",
+                "Bytes downloaded by user for project. Data is cached; see archiveteam_cache_last_refresh_timestamp_seconds for cache age.",
                 new GaugeConfiguration
                 {
                     LabelNames = ["name", "username"]
@@ -97,10 +98,19 @@ public class ProjectService : IProjectService
         _projectUserItemsGauge = Metrics
             .CreateGauge(
                 "archiveteam_project_user_items",
-                "Items downloaded by user for project",
+                "Items downloaded by user for project. Data is cached; see archiveteam_cache_last_refresh_timestamp_seconds for cache age.",
                 new GaugeConfiguration
                 {
                     LabelNames = ["name", "username"]
+                });
+
+        _cacheLastRefreshGauge = Metrics
+            .CreateGauge(
+                "archiveteam_cache_last_refresh_timestamp_seconds",
+                "Unix timestamp of the last successful data refresh from the ArchiveTeam API. Results are cached; this metric indicates when the cached data was last updated.",
+                new GaugeConfiguration
+                {
+                    LabelNames = ["source"]
                 });
     }
 
@@ -147,6 +157,10 @@ public class ProjectService : IProjectService
             _memoryCache.Set(CacheKey, whitelistedProjects, cacheOptions);
 
             _logger.LogInformation("Cached {Count} whitelisted projects for {CacheDuration}", whitelistedProjects.Length, _options.ProjectsCacheDuration);
+
+            _cacheLastRefreshGauge
+                .WithLabels("projects")
+                .Set(DateTimeOffset.UtcNow.ToUnixTimeSeconds());
 
             return whitelistedProjects;
         }
@@ -211,6 +225,10 @@ public class ProjectService : IProjectService
             _memoryCache.Set(cacheKey, statsResponse, cacheOptions);
 
             _logger.LogInformation("Cached stats for project {ProjectName} for {CacheDuration}", projectName, _options.StatsCacheDuration);
+
+            _cacheLastRefreshGauge
+                .WithLabels("stats")
+                .Set(DateTimeOffset.UtcNow.ToUnixTimeSeconds());
 
             return statsResponse;
         }
