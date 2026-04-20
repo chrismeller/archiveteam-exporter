@@ -142,11 +142,11 @@ public class ProjectService : IProjectService
             }
 
             var cacheOptions = new MemoryCacheEntryOptions()
-                .SetAbsoluteExpiration(_options.CacheDuration);
+                .SetAbsoluteExpiration(_options.ProjectsCacheDuration);
 
             _memoryCache.Set(CacheKey, whitelistedProjects, cacheOptions);
 
-            _logger.LogInformation("Cached {Count} whitelisted projects for {CacheDuration}", whitelistedProjects.Length, _options.CacheDuration);
+            _logger.LogInformation("Cached {Count} whitelisted projects for {CacheDuration}", whitelistedProjects.Length, _options.ProjectsCacheDuration);
 
             return whitelistedProjects;
         }
@@ -206,11 +206,11 @@ public class ProjectService : IProjectService
             }
 
             var cacheOptions = new MemoryCacheEntryOptions()
-                .SetAbsoluteExpiration(_options.CacheDuration);
+                .SetAbsoluteExpiration(_options.StatsCacheDuration);
 
             _memoryCache.Set(cacheKey, statsResponse, cacheOptions);
 
-            _logger.LogInformation("Cached stats for project {ProjectName} for {CacheDuration}", projectName, _options.CacheDuration);
+            _logger.LogInformation("Cached stats for project {ProjectName} for {CacheDuration}", projectName, _options.StatsCacheDuration);
 
             return statsResponse;
         }

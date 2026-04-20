@@ -13,6 +13,8 @@ builder.Services.AddOpenApi();
 
 var username = Environment.GetEnvironmentVariable("USERNAME");
 var projectsWhitelist = Environment.GetEnvironmentVariable("PROJECTS_WHITELIST");
+var projectCacheTtl = Environment.GetEnvironmentVariable("PROJECT_CACHE_TTL");
+var statsCacheTtl = Environment.GetEnvironmentVariable("STATS_CACHE_TTL");
 
 var inMemoryConfig = new Dictionary<string, string?>();
 
@@ -24,6 +26,16 @@ if (!string.IsNullOrEmpty(username))
 if (!string.IsNullOrEmpty(projectsWhitelist))
 {
     inMemoryConfig[$"{ArchiveTeamOptions.SectionName}:ProjectsWhitelist"] = projectsWhitelist;
+}
+
+if (!string.IsNullOrEmpty(projectCacheTtl))
+{
+    inMemoryConfig[$"{ArchiveTeamOptions.SectionName}:ProjectsCacheDurationMinutes"] = projectCacheTtl;
+}
+
+if (!string.IsNullOrEmpty(statsCacheTtl))
+{
+    inMemoryConfig[$"{ArchiveTeamOptions.SectionName}:StatsCacheDurationMinutes"] = statsCacheTtl;
 }
 
 if (inMemoryConfig.Count > 0)
