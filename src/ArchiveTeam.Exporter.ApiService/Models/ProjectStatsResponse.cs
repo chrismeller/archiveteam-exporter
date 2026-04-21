@@ -14,7 +14,7 @@ public class ProjectStatsResponse
     public Dictionary<string, long> DownloaderCount { get; set; } = new();
 
     [JsonPropertyName("domain_bytes")]
-    public Dictionary<string, double> DomainBytes { get; set; } = new();
+    public DomainBytesInfo DomainBytes { get; set; } = new();
 
     [JsonPropertyName("total_items_todo")]
     public long TotalItemsTodo { get; set; }
@@ -30,6 +30,12 @@ public class ProjectStatsResponse
 
     [JsonPropertyName("total_items_done")]
     public long TotalItemsDone { get; set; }
+}
+
+public class DomainBytesInfo
+{
+    [JsonPropertyName("data")]
+    public double Data { get; set; }
 }
 
 public class ProjectStatsCounts

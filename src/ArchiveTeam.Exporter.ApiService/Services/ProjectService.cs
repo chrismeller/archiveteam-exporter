@@ -19,6 +19,7 @@ public class ProjectService : IProjectService
     private readonly Gauge _projectItemsDoneGauge;
     private readonly Gauge _projectItemsTodoGauge;
     private readonly Gauge _projectItemsOutGauge;
+    private readonly Gauge _projectTotalBytesGauge;
     private readonly Gauge _projectUserBytesGauge;
     private readonly Gauge _projectUserItemsGauge;
     private readonly Gauge _cacheLastRefreshGauge;
@@ -81,6 +82,15 @@ public class ProjectService : IProjectService
             .CreateGauge(
                 "archiveteam_project_items_out",
                 "Items currently being worked on in the project. Data is cached; see archiveteam_cache_last_refresh_timestamp_seconds for cache age.",
+                new GaugeConfiguration
+                {
+                    LabelNames = ["name"]
+                });
+
+        _projectTotalBytesGauge = Metrics
+            .CreateGauge(
+                "archiveteam_project_total_bytes",
+                "Total bytes processed by the project. Data is cached; see archiveteam_cache_last_refresh_timestamp_seconds for cache age.",
                 new GaugeConfiguration
                 {
                     LabelNames = ["name"]
@@ -274,6 +284,10 @@ public class ProjectService : IProjectService
             _projectItemsOutGauge
                 .WithLabels(name)
                 .Set(stats.TotalItemsOut);
+
+            _projectTotalBytesGauge
+                .WithLabels(name)
+                .Set(stats.DomainBytes.Data);
 
             if (!string.IsNullOrWhiteSpace(_options.Username))
             {
