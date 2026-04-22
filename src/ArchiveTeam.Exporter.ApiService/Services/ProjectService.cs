@@ -25,7 +25,6 @@ public class ProjectService : IProjectService
     private readonly Gauge _cacheLastRefreshGauge;
     private readonly IMemoryCache _memoryCache;
     private readonly SemaphoreSlim _cacheLock = new(1, 1);
-    private const string CacheKey = "whitelisted_projects";
     private readonly JsonSerializerOptions _jsonSerializerOptions = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower
@@ -124,77 +123,6 @@ public class ProjectService : IProjectService
                 });
     }
 
-    public async Task<ArchiveTeamProject[]> FetchProjectsAsync(CancellationToken cancellationToken)
-    {
-        if (_memoryCache.TryGetValue(CacheKey, out ArchiveTeamProject[]? cachedProjects))
-        {
-            _logger.LogInformation("Cache hit: returning {Count} cached projects", cachedProjects?.Length ?? 0);
-            return cachedProjects ?? [];
-        }
-
-        await _cacheLock.WaitAsync(cancellationToken);
-        try
-        {
-            if (_memoryCache.TryGetValue(CacheKey, out cachedProjects))
-            {
-                _logger.LogInformation("Cache hit after lock: returning {Count} cached projects", cachedProjects?.Length ?? 0);
-                return cachedProjects ?? [];
-            }
-
-            _logger.LogInformation("Cache miss: fetching projects from API");
-
-            const string projectsUrl = "https://warriorhq.archiveteam.org/projects.json";
-
-            var response = await _httpClient.GetAsync(projectsUrl, cancellationToken);
-            response.EnsureSuccessStatusCode();
-
-            var projectsResponse = await response.Content.ReadFromJsonAsync<ArchiveTeamProjectsResponse>(cancellationToken);
-
-            var projects = projectsResponse?.Projects ?? [];
-
-            _logger.LogInformation("Successfully loaded {Count} projects", projects.Length);
-
-            var whitelistedProjects = FilterByWhitelist(projects);
-
-            if (whitelistedProjects.Length < projects.Length)
-            {
-                _logger.LogInformation("Filtered to {WhitelistCount} projects based on whitelist", whitelistedProjects.Length);
-            }
-
-            var cacheOptions = new MemoryCacheEntryOptions()
-                .SetAbsoluteExpiration(_options.ProjectsCacheDuration);
-
-            _memoryCache.Set(CacheKey, whitelistedProjects, cacheOptions);
-
-            _logger.LogInformation("Cached {Count} whitelisted projects for {CacheDuration}", whitelistedProjects.Length, _options.ProjectsCacheDuration);
-
-            _cacheLastRefreshGauge
-                .WithLabels("projects")
-                .Set(DateTimeOffset.UtcNow.ToUnixTimeSeconds());
-
-            return whitelistedProjects;
-        }
-        finally
-        {
-            _cacheLock.Release();
-        }
-    }
-
-    private ArchiveTeamProject[] FilterByWhitelist(ArchiveTeamProject[] projects)
-    {
-        if (string.IsNullOrWhiteSpace(_options.ProjectsWhitelist))
-        {
-            return projects;
-        }
-
-        var whitelistEntries = _options.ProjectsWhitelist.Split(',', StringSplitOptions.RemoveEmptyEntries);
-        var whitelistSet = whitelistEntries.ToHashSet(StringComparer.OrdinalIgnoreCase);
-
-        return projects
-            .Where(p => whitelistSet.Contains(p.Name))
-            .ToArray();
-    }
-
     public async Task<ProjectStatsResponse?> FetchProjectStatsAsync(string projectName, CancellationToken cancellationToken)
     {
         var cacheKey = $"stats_{projectName}";
@@ -250,7 +178,12 @@ public class ProjectService : IProjectService
 
     public async Task<ArchiveTeamProject[]> GetProjectGaugesAsync(CancellationToken cancellationToken)
     {
-        var projects = await FetchProjectsAsync(cancellationToken);
+        var projectEntries = _options.Projects.Split(',', StringSplitOptions.RemoveEmptyEntries);
+        var projects = projectEntries
+            .Select(entry => entry.Trim())
+            .Where(entry => !string.IsNullOrEmpty(entry))
+            .Select(entry => new ArchiveTeamProject { Name = entry, Title = entry })
+            .ToArray();
 
         foreach (var project in projects)
         {

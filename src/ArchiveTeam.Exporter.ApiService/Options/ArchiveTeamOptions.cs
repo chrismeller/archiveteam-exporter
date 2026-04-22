@@ -9,8 +9,9 @@ public class ArchiveTeamOptions
     [Required(AllowEmptyStrings = false)]
     public string Username { get; set; } = string.Empty;
 
+    [Required(AllowEmptyStrings = false)]
     [ValidCommaSeparatedList]
-    public string ProjectsWhitelist { get; set; } = string.Empty;
+    public string Projects { get; set; } = string.Empty;
 
     public int ProjectsCacheDurationMinutes { get; set; } = 30;
 
@@ -27,7 +28,7 @@ public class ValidCommaSeparatedListAttribute : ValidationAttribute
     {
         if (value == null || string.IsNullOrWhiteSpace((string)value))
         {
-            return ValidationResult.Success;
+            return new ValidationResult("Projects must contain at least one non-empty project name.");
         }
 
         var stringValue = (string)value;
@@ -35,7 +36,7 @@ public class ValidCommaSeparatedListAttribute : ValidationAttribute
 
         if (parts.Length == 0)
         {
-            return new ValidationResult("ProjectsWhitelist must contain at least one non-empty project name.");
+            return new ValidationResult("Projects must contain at least one non-empty project name.");
         }
 
         return ValidationResult.Success;

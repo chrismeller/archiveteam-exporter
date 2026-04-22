@@ -12,7 +12,7 @@ builder.Services.AddProblemDetails();
 builder.Services.AddOpenApi();
 
 var username = Environment.GetEnvironmentVariable("USERNAME");
-var projectsWhitelist = Environment.GetEnvironmentVariable("PROJECTS_WHITELIST");
+var projects = Environment.GetEnvironmentVariable("PROJECTS");
 var projectCacheTtl = Environment.GetEnvironmentVariable("PROJECT_CACHE_TTL");
 var statsCacheTtl = Environment.GetEnvironmentVariable("STATS_CACHE_TTL");
 
@@ -23,9 +23,9 @@ if (!string.IsNullOrEmpty(username))
     inMemoryConfig[$"{ArchiveTeamOptions.SectionName}:Username"] = username;
 }
 
-if (!string.IsNullOrEmpty(projectsWhitelist))
+if (!string.IsNullOrEmpty(projects))
 {
-    inMemoryConfig[$"{ArchiveTeamOptions.SectionName}:ProjectsWhitelist"] = projectsWhitelist;
+    inMemoryConfig[$"{ArchiveTeamOptions.SectionName}:Projects"] = projects;
 }
 
 if (!string.IsNullOrEmpty(projectCacheTtl))
