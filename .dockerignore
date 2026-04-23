@@ -1,0 +1,14 @@
+.git/
+.github/
+.kilo/
+.qlty/
+.vscode/
+.whitesource
+**/bin/
+**/obj/
+**/TestResults/
+mise.toml
+renovate.json
+LICENSE
+README.md
+hk.pkl

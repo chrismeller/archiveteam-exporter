@@ -7,36 +7,58 @@ on:
         branches: [ main ]
     workflow_dispatch:
 
+env:
+    REGISTRY: ghcr.io
+    IMAGE_NAME: ${{ github.repository }}
+
 jobs:
     build-and-push:
         runs-on: ubuntu-latest
         permissions:
             contents: read
             packages: write
+            id-token: write
 
         steps:
             - name: Checkout code
               uses: actions/checkout@v6
 
-            - name: Setup .NET
-              uses: actions/setup-dotnet@v5
-              with:
-                  dotnet-version: "10.0.x"
-
-            - name: Install Aspire CLI
-              run: |
-                  curl -sSL https://aspire.dev/install.sh | bash
-                  echo "$HOME/.aspire/bin" >> $GITHUB_PATH
+            - name: Set up Docker Buildx
+              uses: docker/setup-buildx-action@v4
 
             - name: Log in to GitHub Container Registry
               uses: docker/login-action@v4
               with:
-                  registry: ghcr.io
+                  registry: ${{ env.REGISTRY }}
                   username: ${{ github.actor }}
                   password: ${{ secrets.GITHUB_TOKEN }}
 
-            - name: Build and push container images
-              env:
-                  REGISTRY_ENDPOINT: ghcr.io
-                  REGISTRY_REPOSITORY: ${{ github.repository }}
-              run: aspire do push
+            - name: Extract metadata (tags, labels)
+              id: meta
+              uses: docker/metadata-action@v6
+              with:
+                  images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+                  tags: |
+                      type=ref,event=branch
+                      type=ref,event=pr
+                      type=sha,prefix=sha-
+                      type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+
+            - name: Build and push Docker image
+              id: push
+              uses: docker/build-push-action@v7
+              with:
+                  context: .
+                  push: ${{ github.event_name != 'pull_request' }}
+                  tags: ${{ steps.meta.outputs.tags }}
+                  labels: ${{ steps.meta.outputs.labels }}
+                  provenance: mode=max
+                  sbom: true
+
+            - name: Generate artifact attestation
+              if: github.event_name != 'pull_request'
+              uses: actions/attest-build-provenance@v2
+              with:
+                  subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+                  subject-digest: ${{ steps.push.outputs.digest }}
+                  push-to-registry: true
